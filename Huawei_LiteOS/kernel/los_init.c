@@ -31,10 +31,10 @@
  * Import, export and usage of Huawei LiteOS in any manner by you shall be in compliance with such
  * applicable export control laws and regulations.
  *---------------------------------------------------------------------------*/
-#include "los_sys.h"
-#include "los_tick.h"
-#include "los_task.ph"
-#include "los_config.h"
+#include "los_sys.h" // 系统相关头文件
+#include "los_tick.h" // 时钟节拍相关
+#include "los_task.ph" // 任务管理相关
+#include "los_config.h" // 系统配置
 
 #if (LOSCFG_PLATFORM_EXC == YES)
 #include "los_exc.ph"
@@ -46,12 +46,17 @@ extern "C" {
 #endif /* __cpluscplus */
 #endif /* __cpluscplus */
 
-LITE_OS_SEC_BSS UINT8* m_aucSysMem0;
+// LITE_OS_SEC_BSS：定义变量放在.bss段（未初始化数据段)
+// UINT8*：8位无符号整型指针(在los_typedef.h中定义)
+LITE_OS_SEC_BSS UINT8* m_aucSysMem0; // 系统内存池指针
 
 #if ((LOSCFG_PLATFORM_EXC == YES) && (LOSCFG_SAVE_EXC_INFO == YES))
-LITE_OS_SEC_BSS UINT8 m_aucTaskArray[MAX_EXC_MEM_SIZE];
+LITE_OS_SEC_BSS UINT8 m_aucTaskArray[MAX_EXC_MEM_SIZE]; // 异常信息保存数组
 #endif
 
+// FPU使能函数
+// 作用：使能ARM Cortex-M系列的浮点运算单元(FPU)
+// 地址OxE000ED88: ARM的CPACR
 LITE_OS_SEC_TEXT_INIT void osEnableFPU(void)
 {
     *(volatile UINT32 *)0xE000ED88 |= ((3UL << 20)|(3UL << 22));
