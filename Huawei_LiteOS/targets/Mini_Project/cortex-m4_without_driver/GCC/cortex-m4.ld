@@ -50,6 +50,7 @@ CCMRAM (rw)      : ORIGIN = 0x10000000, LENGTH = 64K
 SECTIONS
 {
   /* The startup code goes first into FLASH */
+  /* 中断向量表 */
   .isr_vector :
   {
     . = ALIGN(4);
@@ -65,7 +66,7 @@ SECTIONS
     *(.text*)          /* .text* sections (code) */
     *(.glue_7)         /* glue arm to thumb code */
     *(.glue_7t)        /* glue thumb to arm code */
-    *(.eh_frame)
+    *(.eh_frame)-
 
     KEEP (*(.init))
     KEEP (*(.fini))
@@ -160,7 +161,7 @@ SECTIONS
 
 
   /* Uninitialized data section */
-  . = ALIGN(4);
+  . = ALIGN2(4);
   .bss :
   {
     /* This is used by the startup in order to initialize the .bss secion */
