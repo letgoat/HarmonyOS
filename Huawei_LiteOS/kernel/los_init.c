@@ -59,7 +59,7 @@ LITE_OS_SEC_BSS UINT8 m_aucTaskArray[MAX_EXC_MEM_SIZE]; // 异常信息保存数
 // 地址OxE000ED88: ARM的CPACR
 LITE_OS_SEC_TEXT_INIT void osEnableFPU(void)
 {
-    *(volatile UINT32 *)0xE000ED88 |= ((3UL << 20)|(3UL << 22));
+    *(volatile UINT32 *)0xE000ED88 |= ((3UL << 20)|(3UL << 22)); // 使能CP10和CP11
 }
 
 /*****************************************************************************
@@ -71,8 +71,8 @@ LITE_OS_SEC_TEXT_INIT void osEnableFPU(void)
  *****************************************************************************/
 LITE_OS_SEC_TEXT_INIT VOID LOS_Reboot(VOID)
 {
-    (VOID) LOS_IntLock();
-    while (1)
+    (VOID) LOS_IntLock(); // 关闭中断
+    while (1) //死循环等待看门狗复位
     {
     }
 }
@@ -100,6 +100,8 @@ LITE_OS_SEC_TEXT_INIT static VOID osRegister(VOID)
 LITE_OS_SEC_TEXT_INIT UINT32 LOS_Start(VOID)
 {
     UINT32 uwRet;
+
+    // 1. 启动系统时钟
 #if (LOSCFG_BASE_CORE_TICK_HW_TIME == NO)
     uwRet = osTickStart();
 
@@ -118,11 +120,13 @@ LITE_OS_SEC_TEXT_INIT UINT32 LOS_Start(VOID)
     }
 #endif
 
+    // 2. 处理 newlib 重入指针
 #if (LOSCFG_LIB_LIBC_NEWLIB_REENT == YES)
     extern VOID osTaskSwitchImpurePtr(VOID);
     osTaskSwitchImpurePtr();
 #endif
 
+    // 3. 启动任务调度器
     LOS_StartToRun();
 
     return uwRet;
@@ -139,8 +143,10 @@ LITE_OS_SEC_TEXT_INIT UINT32 LOS_KernelInit(VOID)
 {
     UINT32 uwRet;
 
+    // 1. 配置任务数量
     osRegister();
 
+    // 2. 初始化系统内存
     m_aucSysMem0 = OS_SYS_MEM_ADDR;
     uwRet = osMemSystemInit();
     if (uwRet != LOS_OK)
@@ -149,18 +155,21 @@ LITE_OS_SEC_TEXT_INIT UINT32 LOS_KernelInit(VOID)
         return uwRet;
     }
 
+    // 3. 初始化硬件中断
 #if (LOSCFG_PLATFORM_HWI == YES)
     {
         osHwiInit();
     }
 #endif
 
+    // 4. 初始化异常处理
 #if (LOSCFG_PLATFORM_EXC == YES)
     {
         osExcInit(MAX_EXC_MEM_SIZE);
     }
 #endif
 
+    // 5. 初始化任务管理
     uwRet =osTaskInit();
     if (uwRet != LOS_OK)
     {
@@ -168,12 +177,14 @@ LITE_OS_SEC_TEXT_INIT UINT32 LOS_KernelInit(VOID)
         return uwRet;
     }
 
+    // 6. 初始化任务监控(可选)
 #if (LOSCFG_BASE_CORE_TSK_MONITOR == YES)
     {
         osTaskMonInit();
     }
 #endif
 
+    // 7. 初始化CPU使用率统计(可选)
 #if (LOSCFG_BASE_CORE_CPUP == YES)
     {
         uwRet = osCpupInit();
@@ -185,6 +196,7 @@ LITE_OS_SEC_TEXT_INIT UINT32 LOS_KernelInit(VOID)
     }
 #endif
 
+     // 8. 初始化信号量(可选)
 #if (LOSCFG_BASE_IPC_SEM == YES)
     {
         uwRet = osSemInit();
@@ -195,6 +207,7 @@ LITE_OS_SEC_TEXT_INIT UINT32 LOS_KernelInit(VOID)
     }
 #endif
 
+    // 9. 初始化互斥锁(可选)
 #if (LOSCFG_BASE_IPC_MUX == YES)
     {
         uwRet = osMuxInit();
@@ -205,6 +218,7 @@ LITE_OS_SEC_TEXT_INIT UINT32 LOS_KernelInit(VOID)
     }
 #endif
 
+    // 10. 初始化消息队列(可选)
 #if (LOSCFG_BASE_IPC_QUEUE == YES)
     {
         uwRet = osQueueInit();
@@ -216,6 +230,7 @@ LITE_OS_SEC_TEXT_INIT UINT32 LOS_KernelInit(VOID)
     }
 #endif
 
+    // 11. 初始化软件定时器(可选)
 #if (LOSCFG_BASE_CORE_SWTMR == YES)
     {
         uwRet = osSwTmrInit();
@@ -227,16 +242,19 @@ LITE_OS_SEC_TEXT_INIT UINT32 LOS_KernelInit(VOID)
     }
 #endif
 
+    // 12. 初始化时间片轮转(可选)
     #if(LOSCFG_BASE_CORE_TIMESLICE == YES)
     osTimesliceInit();
     #endif
 
+    // 13. 创建 IDLE 任务
     uwRet = osIdleTaskCreate();
     if (uwRet != LOS_OK)
     {
         return uwRet;
     }
 
+    // 14. 初始化测试模块(可选)
 #if (LOSCFG_TEST == YES)
     uwRet = los_TestInit();
     if (uwRet != LOS_OK)
